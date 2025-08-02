@@ -12,27 +12,22 @@
 <details>
   <summary>LED-индикация по расписанию</summary>
 
-  1. Создаем папку с любым названием в директории `/usr/bin`:
+  1. Создаем файл со скриптом и делаем его исполняемым:
   ```
-  mkdir -p /usr/bin/scripts
-  ```
-
-  2. Создаем файл со скриптом в созданной нами директории и делаем его исполняемым:
-  ```
-  touch /usr/bin/scripts/ledcontrol.sh & chmod +x /usr/bin/scripts/ledcontrol.sh
+  touch /etc/ledcontrol.sh & chmod +x /etc/ledcontrol.sh
   ```
   
   3. Открываем файл в текстовом редакторе:
   ```
-  vi /usr/bin/scripts/ledcontrol.sh
+  vi /etc/ledcontrol.sh
   ```
   
   4. Вставляем в него содержимое [скрипта](https://raw.githubusercontent.com/NikkyFreaky/OpenWRT_domains_scripts/refs/heads/main/Scripts/ledcontrol.sh).
   
   5. Затем в веб-интерфейсе LuCI заходим в **scheduled tasks** (планировщик), расположенный в System→Scheduled tasks (Система→Планировщик), добавляем расписание включения и отключения LED-индикации:
   ```
-  00 23 * * * /usr/bin/scripts/ledcontrol.sh off
-  00 7 * * * /usr/bin/scripts/ledcontrol.sh on
+  00 23 * * * /etc/ledcontrol.sh off
+  00 7 * * * /etc/ledcontrol.sh on
   ```
   И нажимаем **Save** (сохранить).
   
