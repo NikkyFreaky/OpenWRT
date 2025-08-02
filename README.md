@@ -4,6 +4,6 @@
 <details>
   <summary>Copilot</summary>
   
-  - [RAW](https://raw.githubusercontent.com/NikkyFreaky/OpenWRT_domains/refs/heads/main/Services/copilot.lst)
+  - [RAW](https://raw.githubusercontent.com/NikkyFreaky/OpenWRT_domains_scripts/refs/heads/main/Services/copilot.lst)
 
 </details>
