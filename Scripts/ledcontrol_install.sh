@@ -38,9 +38,11 @@ fi
 /etc/init.d/cron restart
 echo "[*] Сервис cron перезагружен"
 
+RC_CMD="(sleep 5 && $SCRIPT_PATH auto) &"
+
 if [ -f "$RC_LOCAL" ]; then
-  if ! grep -Fq "$SCRIPT_PATH auto" "$RC_LOCAL"; then
-    sed -i "/^exit 0/i (sleep 5 && $SCRIPT_PATH auto) &\n" "$RC_LOCAL"
+  if ! grep -Fq "$RC_CMD" "$RC_LOCAL"; then
+    sed -i "/^exit 0/i $RC_CMD\\n" "$RC_LOCAL"
     echo "[+] Вызов скрипта добавлен в rc.local"
   else
     echo "[i] В rc.local уже есть нужная строка"
