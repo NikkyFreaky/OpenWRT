@@ -43,7 +43,7 @@ RC_LINE='(sleep 5 && /etc/ledcontrol.sh auto) &'
 if [ -f "$RC_LOCAL" ]; then
   if ! grep -Fq "$RC_LINE" "$RC_LOCAL"; then
     sed -i "\|^exit 0|i $RC_LINE" "$RC_LOCAL"
-    sed -i "\|^exit 0|i \ " "$RC_LOCAL"
+    sed -i "\|^exit 0|i \\\n" "$RC_LOCAL"
     echo "[+] Вызов скрипта добавлен в rc.local"
   else
     echo "[i] В rc.local уже есть нужная строка"
