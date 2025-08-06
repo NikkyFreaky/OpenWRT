@@ -38,12 +38,14 @@ fi
 /etc/init.d/cron restart
 echo "[*] Сервис cron перезагружен"
 
+RC_LINE='(sleep 5 && /etc/ledcontrol.sh auto) &'
+
 if [ -f "$RC_LOCAL" ]; then
-  if ! grep -q "$SCRIPT_PATH" "$RC_LOCAL"; then
-    sed -i "/^exit 0/i $SCRIPT_PATH check" "$RC_LOCAL"
+  if ! grep -Fq "$RC_LINE" "$RC_LOCAL"; then
+    sed -i "\|^exit 0|i $RC_LINE" "$RC_LOCAL"
     echo "[+] Вызов скрипта добавлен в rc.local"
   else
-    echo "[i] В rc.local уже есть вызов скрипта"
+    echo "[i] В rc.local уже есть нужная строка"
   fi
 else
   echo "[!] Внимание: /etc/rc.local не найден. Добавление пропущено"
