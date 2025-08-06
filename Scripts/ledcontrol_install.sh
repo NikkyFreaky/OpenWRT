@@ -39,8 +39,8 @@ fi
 echo "[*] Сервис cron перезагружен"
 
 if [ -f "$RC_LOCAL" ]; then
-  if ! grep -Fq "$SCRIPT_FILE auto" "$RC_LOCAL"; then
-    sed -i "/^exit 0/i (sleep 5 && $SCRIPT_FILE auto) &\n" "$RC_LOCAL"
+  if ! grep -Fq "$SCRIPT_PATH auto" "$RC_LOCAL"; then
+    sed -i "/^exit 0/i (sleep 5 && $SCRIPT_PATH auto) &\n" "$RC_LOCAL"
     echo "[+] Вызов скрипта добавлен в rc.local"
   else
     echo "[i] В rc.local уже есть нужная строка"
