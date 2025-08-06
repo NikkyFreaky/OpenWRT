@@ -1,20 +1,24 @@
 #!/bin/sh
 
-SCRIPT_PATH="/etc/scripts/ledcontrol.sh"
+SCRIPT_DIR="/etc/scripts"
+SCRIPT_PATH="$SCRIPT_DIR/ledcontrol.sh"
 SCRIPT_URL="https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/refs/heads/main/Scripts/ledcontrol.sh"
 CRON_FILE="/etc/crontabs/root"
 RC_LOCAL="/etc/rc.local"
 
+echo "[*] Создаём директорию $SCRIPT_DIR (если не существует)..."
+mkdir -p "$SCRIPT_DIR"
+
 echo "[*] Скачиваем скрипт ledcontrol.sh..."
 wget -q -O "$SCRIPT_PATH" "$SCRIPT_URL"
 
-if [ $? -ne 0 ]; then
-  echo "Ошибка: не удалось скачать скрипт"
+if [ $? -ne 0 ] || [ ! -f "$SCRIPT_PATH" ]; then
+  echo "[!] Ошибка: не удалось скачать скрипт по адресу $SCRIPT_URL"
   exit 1
 fi
 
 chmod +x "$SCRIPT_PATH"
-echo "[✓] Скрипт скачан и сделан исполняемым"
+echo "[✓] Скрипт скачан и сделан исполняемым: $SCRIPT_PATH"
 
 if ! grep -q "$SCRIPT_PATH on" "$CRON_FILE"; then
   echo "0 7 * * * $SCRIPT_PATH on" >> "$CRON_FILE"
