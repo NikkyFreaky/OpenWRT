@@ -1,7 +1,9 @@
 #!/bin/sh
 
-LED_STATUS="/sys/class/leds/blue:status/trigger"
-LED_BRIGHTNESS="/sys/class/leds/blue:status/brightness"
+LEDS="/sys/class/leds/blue:status /sys/class/leds/blue:power /sys/class/leds/blue:net"
+
+# LED_STATUS="/sys/class/leds/blue:status/trigger"
+# LED_BRIGHTNESS="/sys/class/leds/blue:status/brightness"
 
 # Time format HHMM
 ON_TIME=700
@@ -12,36 +14,46 @@ log() {
 }
 
 led_on() {
-        current_trigger=$(cat "$LED_STATUS" 2>/dev/null)
+        for led in $LEDS; do
+                LED_STATUS="$led/trigger"
+                LED_BRIGHTNESS="$led/brightness"
 
-        if echo "$current_trigger" | grep -q "\[default-on\]"; then
-                log "LED already on"
-        else
-                echo default-on > "$LED_STATUS" 2>/dev/null
-                log "Set LED: default-on"
-        fi
+                current_trigger=$(cat "$LED_STATUS" 2>/dev/null)
+
+                if echo "$current_trigger" | grep -q "\[default-on\]"; then
+                        log "$(basename "$led") already on"
+                else
+                        echo default-on > "$LED_STATUS" 2>/dev/null
+                        log "Set $(basename "$led"): default-on"
+                fi
+        done
 }
 
 led_off() {
-        current_trigger=$(cat "$LED_STATUS" 2>/dev/null)
-        current_brightness=$(cat "$LED_BRIGHTNESS" 2>/dev/null)
-        changed=0
+        for led in $LEDS; do
+                LED_STATUS="$led/trigger"
+                LED_BRIGHTNESS="$led/brightness"
 
-        if ! echo "$current_trigger" | grep -q "\[none\]"; then
-                echo none > "$LED_STATUS" 2>/dev/null
-                changed=1
-        fi
+                current_trigger=$(cat "$LED_STATUS" 2>/dev/null)
+                current_brightness=$(cat "$LED_BRIGHTNESS" 2>/dev/null)
+                changed=0
 
-        if [ "$current_brightness" != "0" ]; then
-                echo 0 > "$LED_BRIGHTNESS" 2>/dev/null
-                changed=1
-        fi
+                if ! echo "$current_trigger" | grep -q "\[none\]"; then
+                        echo none > "$LED_STATUS" 2>/dev/null
+                        changed=1
+                fi
 
-        if [ "$changed" -eq 1 ]; then
-                log "Set LED: none (brightness=$(cat "$LED_BRIGHTNESS"))"
-        else
-                log "LED already off"
-        fi
+                if [ "$current_brightness" != "0" ]; then
+                        echo 0 > "$LED_BRIGHTNESS" 2>/dev/null
+                        changed=1
+                fi
+
+                if [ "$changed" -eq 1 ]; then
+                        log "Set $(basename "$led"): none (brightness=$(cat "$LED_BRIGHTNESS"))"
+                else
+                        log "$(basename "$led") already off"
+                fi
+        done
 }
 
 get_time_value() {
@@ -52,7 +64,7 @@ case "$1" in
         on)
                 led_on
                 ;;
-                
+
         off)
                 led_off
                 ;;
