@@ -8,7 +8,11 @@
 ├── scripts/             # Полезные скрипты для OpenWRT
 │   └── ledcontrol.sh    # Управление LED-индикацией по расписанию
 └── services/            # Списки доменов для различных сервисов
-    └── copilot.lst      # Домены для GitHub Copilot и Microsoft Edge
+    ├── copilot.lst      # Домены для GitHub Copilot и Microsoft Edge
+    ├── figma.lst        # Домены для Figma
+    ├── github.lst       # Домены для GitHub
+    ├── notion.lst       # Домены для Notion
+    └── openwrt.lst      # Домены для OpenWRT
 ```
 
 ## Списки доменов
@@ -18,6 +22,30 @@
 Список доменов, необходимых для корректной работы GitHub Copilot и связанных сервисов Microsoft Edge.
 
 **Прямая ссылка:** [copilot.lst](https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/refs/heads/main/services/copilot.lst)
+
+### Figma
+
+Список доменов, необходимых для корректной работы Figma и связанных сервисов.
+
+**Прямая ссылка:** [figma.lst](https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/refs/heads/main/services/figma.lst)
+
+### GitHub
+
+Список доменов для полноценной работы GitHub и связанных сервисов (включая GitHub Pages, GitHub Actions, и другие интеграции).
+
+**Прямая ссылка:** [github.lst](https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/refs/heads/main/services/github.lst)
+
+### Notion
+
+Список доменов, необходимых для корректной работы Notion и связанных сервисов.
+
+**Прямая ссылка:** [notion.lst](https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/refs/heads/main/services/notion.lst)
+
+### OpenWRT
+
+Список доменов для OpenWRT и связанных сервисов (репозитории пакетов, обновления, документация).
+
+**Прямая ссылка:** [openwrt.lst](https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/refs/heads/main/services/openwrt.lst)
 
 ## Скрипты
 
