@@ -1,11 +1,14 @@
 # OpenWRT Domains Scripts
 
-Коллекция скриптов и списков доменов для OpenWRT роутеров.
+Коллекция скриптов, списков доменов и полезных команд для OpenWRT роутеров.
 
 ## Структура репозитория
 
 ```bash
-├── scripts/             # Полезные скрипты для OpenWRT
+├── docs/                # Документация по разным командам для OpenWRT
+│   └── IPv6.md          # Команды для отключения IPv6
+│   └── PPTP.md          # Команды для установки PPTP-клиента
+├── scripts/             # Скрипты для OpenWRT
 │   └── ledcontrol.sh    # Управление LED-индикацией по расписанию
 └── services/            # Списки доменов для различных сервисов
     ├── copilot.lst      # Домены для GitHub Copilot и Microsoft Edge
@@ -14,6 +17,16 @@
     ├── notion.lst       # Домены для Notion
     └── openwrt.lst      # Домены для OpenWRT
 ```
+
+## Документация
+
+### Команды для отключения IPv6
+
+**Прямая ссылка:** [IPv6.md](https://github.com/NikkyFreaky/OpenWRT/blob/b8d29f57625a8faf30cab986e4c5a8665e1e4f34/docs/IPv6.md)
+
+### Команды для установки PPTP-клиента
+
+**Прямая ссылка:** [PPTP.md](https://github.com/NikkyFreaky/OpenWRT/blob/b8d29f57625a8faf30cab986e4c5a8665e1e4f34/docs/PPTP.md)
 
 ## Списки доменов
 
