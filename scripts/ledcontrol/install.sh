@@ -31,10 +31,38 @@ detect_uci_leds() {
                 sed -n "s/^system\..*\.sysfs='\([^']*\)'$/\1/p"
 }
 
+get_led_alias_node() {
+        alias_name="$1"
+
+        for aliases_dir in /proc/device-tree/aliases /sys/firmware/devicetree/base/aliases; do
+                [ -r "$aliases_dir/$alias_name" ] || continue
+                tr -d '\000' < "$aliases_dir/$alias_name"
+                return
+        done
+}
+
+led_matches_node() {
+        led="$1"
+        node="$2"
+
+        [ -n "$node" ] || return 1
+        led_node=$(readlink -f "$led/device/of_node" 2>/dev/null)
+        [ -n "$led_node" ] || led_node=$(readlink -f "$led/of_node" 2>/dev/null)
+
+        case "$led_node" in
+                *"$node") return 0 ;;
+        esac
+
+        return 1
+}
+
 generate_led_config() {
         uci_leds=$(detect_uci_leds)
+        running_led_node=$(get_led_alias_node led-running)
         leds=""
         static_leds=""
+        static_led_names=""
+        static_candidates=""
         led_names=""
         led_count=0
 
@@ -56,13 +84,35 @@ generate_led_config() {
 
                 case "$led_name" in
                         power|status|system|running|*:power|*:status|*:system|*:running)
-                                static_leds="$static_leds $led"
+                                static_candidates="$static_candidates $led"
                                 ;;
                 esac
         done
 
+        # A multicolour LED can expose one sysfs entry per colour.  Prefer the
+        # device-tree led-running alias (the platform's normal running state)
+        # over enabling every colour.  If no alias is available, use only an
+        # unambiguous single-colour power/status/system/running LED.
+        for led in $static_candidates; do
+                led_name=${led##*/}
+                led_role=${led_name##*:}
+                role_count=0
+
+                for candidate in $static_candidates; do
+                        candidate_name=${candidate##*/}
+                        [ "${candidate_name##*:}" = "$led_role" ] && \
+                                role_count=$((role_count + 1))
+                done
+
+                if led_matches_node "$led" "$running_led_node" || [ "$role_count" -eq 1 ]; then
+                        static_leds="$static_leds $led"
+                        static_led_names="$static_led_names $led_name"
+                fi
+        done
+
         leds=${leds# }
         static_leds=${static_leds# }
+        static_led_names=${static_led_names# }
         led_names=${led_names# }
         [ -n "$leds" ] || return 1
 
@@ -74,6 +124,7 @@ generate_led_config() {
 
         DETECTED_LED_COUNT="$led_count"
         DETECTED_LED_NAMES="$led_names"
+        DETECTED_STATIC_LED_NAMES="$static_led_names"
 }
 
 remove_cron_entries() {
@@ -149,7 +200,7 @@ install_startup() {
                                 print "exit 0"
                         }
                 }
-        ' "$TEMP_DIR/rc.local" > "$TEMP_DIR/rc.local.new"
+        ' "$RC_LOCAL" > "$TEMP_DIR/rc.local.new"
         mv "$TEMP_DIR/rc.local.new" "$RC_LOCAL"
         chmod +x "$RC_LOCAL"
 }
@@ -225,6 +276,7 @@ main() {
                 exit 1
         }
         msg "Detected LEDs: $DETECTED_LED_NAMES"
+        msg "Static LEDs: ${DETECTED_STATIC_LED_NAMES:-none}"
 
         mkdir -p "$SCRIPT_DIR"
         mv "$TEMP_DIR/ledcontrol.sh" "$CONTROL_SCRIPT"
