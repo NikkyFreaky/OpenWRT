@@ -22,10 +22,25 @@ concurrency:
 
 jobs:
   build:
-    name: OpenWrt 25.12 APKs
+    name: OpenWrt ${{ matrix.release }} ${{ matrix.package_format }} packages
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - release: '25.12'
+            openwrt_ref: openwrt-25.12
+            package_format: APK
+            package_extension: apk
+          - release: '24.10'
+            openwrt_ref: openwrt-24.10
+            package_format: IPK
+            package_extension: ipk
+          - release: '23.05'
+            openwrt_ref: openwrt-23.05
+            package_format: IPK
+            package_extension: ipk
     env:
-      OPENWRT_REF: openwrt-25.12
       OPENWRT_DIR: ${{ github.workspace }}/openwrt
 
     steps:
@@ -50,29 +65,29 @@ jobs:
 
       - name: Fetch OpenWrt buildroot
         run: |
-          git clone --depth=1 --branch "$OPENWRT_REF" \
+          git clone --depth=1 --branch "${{ matrix.openwrt_ref }}" \
             https://github.com/openwrt/openwrt.git "$OPENWRT_DIR"
           printf '%s\n' "src-link ledcontrol $GITHUB_WORKSPACE" >> "$OPENWRT_DIR/feeds.conf.default"
           cd "$OPENWRT_DIR"
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Build APK packages
+      - name: Build packages
         run: |
           cd "$OPENWRT_DIR"
           make defconfig
           make package/ledcontrol/{clean,compile} V=s
 
-      - name: Collect APKs
+      - name: Collect packages
         run: |
           mkdir -p "$GITHUB_WORKSPACE/artifacts"
-          find "$OPENWRT_DIR/bin/packages" -type f -name '*ledcontrol*.apk' -exec cp {} "$GITHUB_WORKSPACE/artifacts/" \;
-          test -n "$(find "$GITHUB_WORKSPACE/artifacts" -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          find "$OPENWRT_DIR/bin/packages" -type f -name '*ledcontrol*.${{ matrix.package_extension }}' -exec cp {} "$GITHUB_WORKSPACE/artifacts/" \;
+          test -n "$(find "$GITHUB_WORKSPACE/artifacts" -maxdepth 1 -type f -name '*.${{ matrix.package_extension }}' -print -quit)"
 
-      - name: Upload APK artifacts
+      - name: Upload package artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ledcontrol-openwrt-25.12-apk
-          path: artifacts/*.apk
+          name: ledcontrol-openwrt-${{ matrix.release }}-${{ matrix.package_extension }}
+          path: artifacts/*.${{ matrix.package_extension }}
           if-no-files-found: error
           retention-days: 30
