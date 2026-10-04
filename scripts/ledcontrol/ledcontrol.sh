@@ -52,6 +52,17 @@ set_automatic_enabled() {
                 uci -q commit "$SETTINGS_CONFIG"
 }
 
+reset_defaults() {
+        uci -q set "$SETTINGS_CONFIG.settings.auto_enabled=$DEFAULT_AUTO_ENABLED" && \
+                uci -q set "$SETTINGS_CONFIG.settings.on_hour=$DEFAULT_ON_HOUR" && \
+                uci -q set "$SETTINGS_CONFIG.settings.off_hour=$DEFAULT_OFF_HOUR" && \
+                uci -q commit "$SETTINGS_CONFIG" || return 1
+
+        ON_HOUR="$DEFAULT_ON_HOUR"
+        OFF_HOUR="$DEFAULT_OFF_HOUR"
+        AUTO_ENABLED="$DEFAULT_AUTO_ENABLED"
+}
+
 set_mode_state() {
         printf '%s\n' "$1" > "$MODE_STATE_FILE"
 }
@@ -200,8 +211,20 @@ case "$1" in
         auto)
                 apply_auto_mode
                 ;;
+        auto-on)
+                set_automatic_enabled 1 || exit 1
+                AUTO_ENABLED=1
+                apply_auto_mode
+                ;;
+        auto-off)
+                set_automatic_enabled 0 || exit 1
+                ;;
+        reset)
+                reset_defaults || exit 1
+                apply_auto_mode
+                ;;
         *)
-                echo "Usage: $0 {on|off|auto}"
+                echo "Usage: $0 {on|off|auto|auto-on|auto-off|reset}"
                 exit 1
                 ;;
 esac
