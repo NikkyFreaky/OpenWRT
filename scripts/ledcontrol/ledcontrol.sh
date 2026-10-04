@@ -9,7 +9,7 @@ if [ ! -r "$CONFIG_FILE" ]; then
         exit 1
 fi
 
-# The installer writes the LED profile for the detected router here.
+# The installer writes the detected LED configuration here.
 # shellcheck disable=SC1090
 . "$CONFIG_FILE"
 
