@@ -20,6 +20,7 @@ fi
 
 DEFAULT_ON_HOUR=7
 DEFAULT_OFF_HOUR=23
+DEFAULT_AUTO_ENABLED=1
 
 log() {
         logger -t ledcontrol "$1"
@@ -28,6 +29,7 @@ log() {
 load_schedule() {
         on_hour=$(uci -q get "$SETTINGS_CONFIG.settings.on_hour")
         off_hour=$(uci -q get "$SETTINGS_CONFIG.settings.off_hour")
+        auto_enabled=$(uci -q get "$SETTINGS_CONFIG.settings.auto_enabled")
 
         case "$on_hour" in
                 [0-9]|1[0-9]|2[0-3]) ON_HOUR="$on_hour" ;;
@@ -38,6 +40,16 @@ load_schedule() {
                 [0-9]|1[0-9]|2[0-3]) OFF_HOUR="$off_hour" ;;
                 *) OFF_HOUR="$DEFAULT_OFF_HOUR" ;;
         esac
+
+        case "$auto_enabled" in
+                0|1) AUTO_ENABLED="$auto_enabled" ;;
+                *) AUTO_ENABLED="$DEFAULT_AUTO_ENABLED" ;;
+        esac
+}
+
+set_automatic_enabled() {
+        uci -q set "$SETTINGS_CONFIG.settings.auto_enabled=$1" && \
+                uci -q commit "$SETTINGS_CONFIG"
 }
 
 set_mode_state() {
@@ -87,7 +99,7 @@ set_static_on() {
         fi
 }
 
-led_on() {
+turn_leds_on() {
         if [ -x /etc/init.d/led ]; then
                 if /etc/init.d/led restart; then
                         log "Restored LED settings from /etc/config/system"
@@ -105,7 +117,7 @@ led_on() {
         set_mode_state on
 }
 
-led_off() {
+turn_leds_off() {
         for led in $(configured_leds); do
                 current_trigger=$(cat "$led/trigger")
                 current_brightness=$(cat "$led/brightness")
@@ -141,6 +153,8 @@ get_time_value() {
 }
 
 apply_auto_mode() {
+        [ "$AUTO_ENABLED" = 1 ] || return
+
         time_now=$(get_time_value)
 
         if [ "$ON_HOUR" -lt "$OFF_HOUR" ]; then
@@ -164,10 +178,10 @@ apply_auto_mode() {
 
         case "$requested_mode" in
                 on)
-                        led_on
+                        turn_leds_on
                         ;;
                 off)
-                        led_off
+                        turn_leds_off
                         ;;
         esac
 }
@@ -176,10 +190,12 @@ load_schedule
 
 case "$1" in
         on)
-                led_on
+                set_automatic_enabled 0
+                turn_leds_on
                 ;;
         off)
-                led_off
+                set_automatic_enabled 0
+                turn_leds_off
                 ;;
         auto)
                 apply_auto_mode

@@ -8,20 +8,48 @@
 const CONTROL_SCRIPT = '/etc/scripts/ledcontrol/ledcontrol.sh';
 const DEFAULT_ON_HOUR = '7';
 const DEFAULT_OFF_HOUR = '23';
+const DEFAULT_AUTO_ENABLED = '1';
+const AUTO_ENABLED_INPUT_ID = 'widget.cbid.ledcontrol.settings.auto_enabled';
+
+let statusNotification = null;
+
+function showStatus(message, style) {
+        if (statusNotification?.parentNode)
+                statusNotification.parentNode.removeChild(statusNotification);
+
+        statusNotification = ui.addNotification(null, E('p', {}, [ message ]), style);
+        statusNotification.setAttribute('data-ledcontrol-notification', '1');
+}
+
+function setAutomaticMode(enabled) {
+        uci.set('ledcontrol', 'settings', 'auto_enabled', enabled ? '1' : '0');
+        return uci.save().then(function() { return uci.apply(); });
+}
+
+function updateAutomaticModeCheckbox(enabled) {
+        const checkbox = document.getElementById(AUTO_ENABLED_INPUT_ID);
+
+        if (checkbox)
+                checkbox.checked = enabled;
+}
 
 function runMode(mode) {
         return fs.exec(CONTROL_SCRIPT, [ mode ]).then(function(result) {
                 if (result.code !== 0)
                         throw new Error(result.stderr || _('The command failed.'));
-
-                ui.addNotification(null, E('p', {}, [
-                        _('LED mode changed to %s.').format(mode)
-                ]), 'info');
-        }).catch(function(error) {
-                ui.addNotification(null, E('p', {}, [
-                        _('Unable to change LED mode: %s').format(error.message)
-                ]), 'danger');
         });
+}
+
+function runManualMode(mode) {
+        return runMode(mode)
+                .then(function() { return setAutomaticMode(false); })
+                .then(function() {
+                        updateAutomaticModeCheckbox(false);
+                        showStatus(_('LED mode changed to %s. Automatic mode disabled.').format(mode), 'info');
+                })
+                .catch(function(error) {
+                        showStatus(_('Unable to change LED mode: %s').format(error.message), 'danger');
+                });
 }
 
 function addHourOptions(option) {
@@ -45,6 +73,28 @@ return view.extend({
 
                 section.anonymous = true;
 
+                option = section.option(form.Flag, 'auto_enabled', _('Automatic mode'),
+                        _('Apply the schedule every five minutes. Manual LED controls disable this mode.'));
+                option.default = DEFAULT_AUTO_ENABLED;
+                option.enabled = '1';
+                option.disabled = '0';
+                option.rmempty = false;
+                option.onchange = function(_event, _sectionId, value) {
+                        const enabled = value === '1';
+
+                        return setAutomaticMode(enabled)
+                                .then(function() {
+                                        return enabled ? runMode('auto') : null;
+                                })
+                                .then(function() {
+                                        showStatus(enabled ? _('Automatic mode enabled.') : _('Automatic mode disabled.'), 'info');
+                                })
+                                .catch(function(error) {
+                                        updateAutomaticModeCheckbox(!enabled);
+                                        showStatus(_('Unable to change automatic mode: %s').format(error.message), 'danger');
+                                });
+                };
+
                 option = section.option(form.ListValue, 'on_hour', _('Turn on at'));
                 option.rmempty = false;
                 option.default = DEFAULT_ON_HOUR;
@@ -57,25 +107,29 @@ return view.extend({
 
                 option = section.option(form.Button, '_on', _('Turn on'));
                 option.inputstyle = 'positive';
-                option.onclick = function() { return runMode('on'); };
+                option.onclick = function() { return runManualMode('on'); };
 
                 option = section.option(form.Button, '_off', _('Turn off'));
                 option.inputstyle = 'negative';
-                option.onclick = function() { return runMode('off'); };
-
-                option = section.option(form.Button, '_auto', _('Automatic mode'));
-                option.inputstyle = 'primary';
-                option.onclick = function() { return runMode('auto'); };
+                option.onclick = function() { return runManualMode('off'); };
 
                 option = section.option(form.Button, '_reset', _('Reset defaults'));
                 option.inputstyle = 'reset';
                 option.onclick = function() {
                         uci.set('ledcontrol', 'settings', 'on_hour', DEFAULT_ON_HOUR);
                         uci.set('ledcontrol', 'settings', 'off_hour', DEFAULT_OFF_HOUR);
+                        uci.set('ledcontrol', 'settings', 'auto_enabled', DEFAULT_AUTO_ENABLED);
 
                         return uci.save()
                                 .then(function() { return uci.apply(); })
-                                .then(function() { return runMode('auto'); });
+                                .then(function() { return runMode('auto'); })
+                                .then(function() {
+                                        updateAutomaticModeCheckbox(true);
+                                        showStatus(_('Default settings restored. Automatic mode enabled.'), 'info');
+                                })
+                                .catch(function(error) {
+                                        showStatus(_('Unable to restore default settings: %s').format(error.message), 'danger');
+                                });
                 };
 
                 return map.render();
