@@ -162,7 +162,14 @@ apply_auto_mode() {
         current_mode=$(cat "$MODE_STATE_FILE" 2>/dev/null)
         [ "$current_mode" = "$requested_mode" ] && return
 
-        "$requested_mode"
+        case "$requested_mode" in
+                on)
+                        led_on
+                        ;;
+                off)
+                        led_off
+                        ;;
+        esac
 }
 
 load_schedule

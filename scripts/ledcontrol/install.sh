@@ -70,9 +70,15 @@ install_luci() {
         mv "$TEMP_DIR/luci-app-ledcontrol.json" /usr/share/luci/menu.d/luci-app-ledcontrol.json
         mv "$TEMP_DIR/luci-app-ledcontrol.acl.json" /usr/share/rpcd/acl.d/luci-app-ledcontrol.json
 
+        # LuCI caches the page tree under /tmp.  Drop every versioned cache
+        # file so a newly installed menu entry is visible immediately.
+        rm -f /tmp/luci-indexcache.*.json
+
         if [ -x /etc/init.d/rpcd ]; then
                 /etc/init.d/rpcd restart
         fi
+
+        msg "LuCI interface installed; sign out and sign in again, then refresh the page"
 }
 
 install_startup() {
