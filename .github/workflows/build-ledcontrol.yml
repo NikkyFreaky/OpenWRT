@@ -1,0 +1,78 @@
+name: Build LED Control packages
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-ledcontrol.yml'
+      - 'package/ledcontrol/**'
+      - 'scripts/ledcontrol/**'
+  pull_request:
+    paths:
+      - '.github/workflows/build-ledcontrol.yml'
+      - 'package/ledcontrol/**'
+      - 'scripts/ledcontrol/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ledcontrol-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: OpenWrt 25.12 APKs
+    runs-on: ubuntu-24.04
+    env:
+      OPENWRT_REF: openwrt-25.12
+      OPENWRT_DIR: ${{ github.workspace }}/openwrt
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install OpenWrt build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential bison busybox clang flex g++ gawk gcc-multilib \
+            gettext git libncurses5-dev libssl-dev python3 rsync unzip \
+            wget zlib1g-dev
+
+      - name: Validate POSIX shell sources
+        run: |
+          busybox ash -n scripts/ledcontrol/install.sh
+          busybox ash -n scripts/ledcontrol/ledcontrol.sh
+          busybox ash -n scripts/ledcontrol/lib/generate-led-config.sh
+          busybox ash -n scripts/ledcontrol/init.d/ledcontrol
+          busybox ash -n package/ledcontrol/files/migrate-legacy
+
+      - name: Fetch OpenWrt buildroot
+        run: |
+          git clone --depth=1 --branch "$OPENWRT_REF" \
+            https://github.com/openwrt/openwrt.git "$OPENWRT_DIR"
+          printf '%s\n' "src-link ledcontrol $GITHUB_WORKSPACE" >> "$OPENWRT_DIR/feeds.conf.default"
+          cd "$OPENWRT_DIR"
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Build APK packages
+        run: |
+          cd "$OPENWRT_DIR"
+          make defconfig
+          make package/ledcontrol/{clean,compile} V=s
+
+      - name: Collect APKs
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          find "$OPENWRT_DIR/bin/packages" -type f -name '*ledcontrol*.apk' -exec cp {} "$GITHUB_WORKSPACE/artifacts/" \;
+          test -n "$(find "$GITHUB_WORKSPACE/artifacts" -maxdepth 1 -type f -name '*.apk' -print -quit)"
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ledcontrol-openwrt-25.12-apk
+          path: artifacts/*.apk
+          if-no-files-found: error
+          retention-days: 30

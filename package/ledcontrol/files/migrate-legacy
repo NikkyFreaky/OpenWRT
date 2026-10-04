@@ -1,0 +1,43 @@
+#!/bin/sh
+
+CONTROL_SCRIPT=/etc/scripts/ledcontrol/ledcontrol.sh
+LEGACY_SCRIPT=/etc/scripts/ledcontrol.sh
+CRONTAB_FILE=/etc/crontabs/root
+RC_LOCAL=/etc/rc.local
+
+remove_legacy_cron_entries() {
+	[ -f "$CRONTAB_FILE" ] || return
+
+	temporary_file="$CRONTAB_FILE.ledcontrol.$$"
+	awk -v current="$CONTROL_SCRIPT" -v legacy="$LEGACY_SCRIPT" \
+		'index($0, current) == 0 && index($0, legacy) == 0 { print }' \
+		"$CRONTAB_FILE" > "$temporary_file" || return
+
+	if ! cmp -s "$CRONTAB_FILE" "$temporary_file"; then
+		mv "$temporary_file" "$CRONTAB_FILE"
+		[ -x /etc/init.d/cron ] && /etc/init.d/cron restart
+	else
+		rm -f "$temporary_file"
+	fi
+}
+
+remove_legacy_startup_entries() {
+	[ -f "$RC_LOCAL" ] || return
+
+	startup_line="(sleep 5 && $CONTROL_SCRIPT auto) &"
+	legacy_startup_line="(sleep 5 && $LEGACY_SCRIPT auto) &"
+	temporary_file="$RC_LOCAL.ledcontrol.$$"
+	awk -v current="$startup_line" -v legacy="$legacy_startup_line" \
+		'$0 != current && $0 != legacy { print }' "$RC_LOCAL" > "$temporary_file" || return
+
+	if ! cmp -s "$RC_LOCAL" "$temporary_file"; then
+		mv "$temporary_file" "$RC_LOCAL"
+	else
+		rm -f "$temporary_file"
+	fi
+}
+
+remove_legacy_cron_entries
+remove_legacy_startup_entries
+rm -f "$LEGACY_SCRIPT"
+rm -rf /etc/scripts/ledcontrol/profiles
