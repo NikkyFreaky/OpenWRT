@@ -1,6 +1,8 @@
 #!/bin/sh
 
 CONFIG_FILE="/etc/scripts/ledcontrol/ledcontrol.conf"
+SETTINGS_CONFIG="ledcontrol"
+MODE_STATE_FILE="/tmp/ledcontrol.mode"
 
 if [ ! -r "$CONFIG_FILE" ]; then
         echo "ledcontrol: configuration not found; run the installer again" >&2
@@ -16,12 +18,30 @@ if [ -z "$LEDS" ]; then
         exit 1
 fi
 
-# Time format HHMM
-ON_TIME=700
-OFF_TIME=2300
+DEFAULT_ON_HOUR=7
+DEFAULT_OFF_HOUR=23
 
 log() {
         logger -t ledcontrol "$1"
+}
+
+load_schedule() {
+        on_hour=$(uci -q get "$SETTINGS_CONFIG.settings.on_hour")
+        off_hour=$(uci -q get "$SETTINGS_CONFIG.settings.off_hour")
+
+        case "$on_hour" in
+                [0-9]|1[0-9]|2[0-3]) ON_HOUR="$on_hour" ;;
+                *) ON_HOUR="$DEFAULT_ON_HOUR" ;;
+        esac
+
+        case "$off_hour" in
+                [0-9]|1[0-9]|2[0-3]) OFF_HOUR="$off_hour" ;;
+                *) OFF_HOUR="$DEFAULT_OFF_HOUR" ;;
+        esac
+}
+
+set_mode_state() {
+        printf '%s\n' "$1" > "$MODE_STATE_FILE"
 }
 
 configured_leds() {
@@ -81,6 +101,8 @@ led_on() {
         for led in $STATIC_ON_LEDS; do
                 set_static_on "$led"
         done
+
+        set_mode_state on
 }
 
 led_off() {
@@ -109,12 +131,41 @@ led_off() {
                         log "${led##*/} already off"
                 fi
         done
+
+        set_mode_state off
 }
 
 get_time_value() {
-        time_value=$(date +%H%M | sed 's/^0*//')
+        time_value=$(date +%H | sed 's/^0*//')
         printf '%s\n' "${time_value:-0}"
 }
+
+apply_auto_mode() {
+        time_now=$(get_time_value)
+
+        if [ "$ON_HOUR" -lt "$OFF_HOUR" ]; then
+                if [ "$time_now" -ge "$ON_HOUR" ] && [ "$time_now" -lt "$OFF_HOUR" ]; then
+                        requested_mode=on
+                else
+                        requested_mode=off
+                fi
+        elif [ "$ON_HOUR" -gt "$OFF_HOUR" ]; then
+                if [ "$time_now" -ge "$ON_HOUR" ] || [ "$time_now" -lt "$OFF_HOUR" ]; then
+                        requested_mode=on
+                else
+                        requested_mode=off
+                fi
+        else
+                requested_mode=off
+        fi
+
+        current_mode=$(cat "$MODE_STATE_FILE" 2>/dev/null)
+        [ "$current_mode" = "$requested_mode" ] && return
+
+        "$requested_mode"
+}
+
+load_schedule
 
 case "$1" in
         on)
@@ -124,13 +175,7 @@ case "$1" in
                 led_off
                 ;;
         auto)
-                time_now=$(get_time_value)
-
-                if [ "$time_now" -ge "$ON_TIME" ] && [ "$time_now" -lt "$OFF_TIME" ]; then
-                        led_on
-                else
-                        led_off
-                fi
+                apply_auto_mode
                 ;;
         *)
                 echo "Usage: $0 {on|off|auto}"

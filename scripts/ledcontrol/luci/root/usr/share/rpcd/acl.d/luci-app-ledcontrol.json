@@ -1,0 +1,17 @@
+{
+        "luci-app-ledcontrol": {
+                "description": "Grant access to LED Control",
+                "read": {
+                        "uci": [ "ledcontrol" ]
+                },
+                "write": {
+                        "file": {
+                                "/etc/scripts/ledcontrol/ledcontrol.sh": [ "exec" ]
+                        },
+                        "ubus": {
+                                "file": [ "exec" ]
+                        },
+                        "uci": [ "ledcontrol" ]
+                }
+        }
+}

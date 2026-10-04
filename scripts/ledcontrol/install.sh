@@ -4,6 +4,7 @@ REPOSITORY="https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/refs/heads/mai
 SCRIPT_DIR="/etc/scripts/ledcontrol"
 CONTROL_SCRIPT="$SCRIPT_DIR/ledcontrol.sh"
 CONFIG_FILE="$SCRIPT_DIR/ledcontrol.conf"
+SETTINGS_FILE="/etc/config/ledcontrol"
 LEGACY_SCRIPT="/etc/scripts/ledcontrol.sh"
 CRONTAB_FILE="/etc/crontabs/root"
 RC_LOCAL="/etc/rc.local"
@@ -50,12 +51,28 @@ install_cron() {
                 grep -Fv "$LEGACY_SCRIPT" > "$TEMP_DIR/crontab"
         {
                 cat "$TEMP_DIR/crontab"
-                printf '%s\n' "0 7 * * * $CONTROL_SCRIPT on"
-                printf '%s\n' "0 23 * * * $CONTROL_SCRIPT off"
-                printf '%s\n' "*/30 * * * * $CONTROL_SCRIPT auto"
+                printf '%s\n' "*/5 * * * * $CONTROL_SCRIPT auto"
         } > "$TEMP_DIR/crontab.new"
         mv "$TEMP_DIR/crontab.new" "$CRONTAB_FILE"
         /etc/init.d/cron restart
+}
+
+install_luci() {
+        [ -d /www/luci-static/resources ] || {
+                msg "LuCI is not installed; skipped the web interface"
+                return
+        }
+
+        mkdir -p /www/luci-static/resources/view/ledcontrol
+        mkdir -p /usr/share/luci/menu.d
+        mkdir -p /usr/share/rpcd/acl.d
+        mv "$TEMP_DIR/overview.js" /www/luci-static/resources/view/ledcontrol/overview.js
+        mv "$TEMP_DIR/luci-app-ledcontrol.json" /usr/share/luci/menu.d/luci-app-ledcontrol.json
+        mv "$TEMP_DIR/luci-app-ledcontrol.acl.json" /usr/share/rpcd/acl.d/luci-app-ledcontrol.json
+
+        if [ -x /etc/init.d/rpcd ]; then
+                /etc/init.d/rpcd restart
+        fi
 }
 
 install_startup() {
@@ -107,10 +124,30 @@ main() {
                 msg "Unable to download the LED profile for $model"
                 exit 1
         }
+        download "$REPOSITORY/defaults/ledcontrol" "$TEMP_DIR/ledcontrol.defaults" || {
+                msg "Unable to download the default settings"
+                exit 1
+        }
+        download "$REPOSITORY/luci/htdocs/luci-static/resources/view/ledcontrol/overview.js" "$TEMP_DIR/overview.js" || {
+                msg "Unable to download the LuCI interface"
+                exit 1
+        }
+        download "$REPOSITORY/luci/root/usr/share/luci/menu.d/luci-app-ledcontrol.json" "$TEMP_DIR/luci-app-ledcontrol.json" || {
+                msg "Unable to download the LuCI menu"
+                exit 1
+        }
+        download "$REPOSITORY/luci/root/usr/share/rpcd/acl.d/luci-app-ledcontrol.json" "$TEMP_DIR/luci-app-ledcontrol.acl.json" || {
+                msg "Unable to download the LuCI access policy"
+                exit 1
+        }
 
         mkdir -p "$SCRIPT_DIR"
         mv "$TEMP_DIR/ledcontrol.sh" "$CONTROL_SCRIPT"
         mv "$TEMP_DIR/ledcontrol.conf" "$CONFIG_FILE"
+        if [ ! -f "$SETTINGS_FILE" ]; then
+                mkdir -p /etc/config
+                mv "$TEMP_DIR/ledcontrol.defaults" "$SETTINGS_FILE"
+        fi
         chmod 755 "$CONTROL_SCRIPT"
         if [ -e "$LEGACY_SCRIPT" ]; then
                 rm -f "$LEGACY_SCRIPT"
@@ -118,6 +155,7 @@ main() {
         fi
         install_cron
         install_startup
+        install_luci
         "$CONTROL_SCRIPT" auto
         msg "ledcontrol installed with profile: $profile"
 }

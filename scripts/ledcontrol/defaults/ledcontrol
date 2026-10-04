@@ -1,0 +1,3 @@
+config ledcontrol 'settings'
+        option on_hour '7'
+        option off_hour '23'
