@@ -2,6 +2,8 @@ name: Build LED Control packages
 
 on:
   push:
+    tags:
+      - 'v*'
     paths:
       - '.github/workflows/build-ledcontrol.yml'
       - 'package/ledcontrol/**'
@@ -58,6 +60,7 @@ jobs:
       - name: Validate POSIX shell sources
         run: |
           busybox ash -n scripts/ledcontrol/install.sh
+          busybox ash -n scripts/ledcontrol/install-package.sh
           busybox ash -n scripts/ledcontrol/ledcontrol.sh
           busybox ash -n scripts/ledcontrol/lib/generate-led-config.sh
           busybox ash -n scripts/ledcontrol/init.d/ledcontrol
@@ -76,12 +79,17 @@ jobs:
         run: |
           cd "$OPENWRT_DIR"
           make defconfig
+          make tools/install
+          make toolchain/install
           make package/ledcontrol/{clean,compile} V=s
 
       - name: Collect packages
         run: |
           mkdir -p "$GITHUB_WORKSPACE/artifacts"
-          find "$OPENWRT_DIR/bin/packages" -type f -name '*ledcontrol*.${{ matrix.package_extension }}' -exec cp {} "$GITHUB_WORKSPACE/artifacts/" \;
+          while IFS= read -r package; do
+            filename=$(basename "$package")
+            cp "$package" "$GITHUB_WORKSPACE/artifacts/${filename%.${{ matrix.package_extension }}}-openwrt-${{ matrix.release }}.${{ matrix.package_extension }}"
+          done < <(find "$OPENWRT_DIR/bin/packages" -type f -name '*ledcontrol*.${{ matrix.package_extension }}')
           test -n "$(find "$GITHUB_WORKSPACE/artifacts" -maxdepth 1 -type f -name '*.${{ matrix.package_extension }}' -print -quit)"
 
       - name: Upload package artifacts
@@ -91,3 +99,27 @@ jobs:
           path: artifacts/*.${{ matrix.package_extension }}
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    name: Publish tagged release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download built packages
+        uses: actions/download-artifact@v5
+        with:
+          path: packages
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          mkdir release-assets
+          find packages -type f \( -name '*.apk' -o -name '*.ipk' \) -exec cp {} release-assets/ \;
+          test -n "$(find release-assets -maxdepth 1 -type f -print -quit)"
+          gh release create "$TAG" release-assets/* --generate-notes
