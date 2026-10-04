@@ -9,7 +9,7 @@
 │   └── IPv6.md          # Команды для отключения IPv6
 │   └── PPTP.md          # Команды для установки PPTP-клиента
 ├── scripts/             # Скрипты для OpenWRT
-│   └── ledcontrol.sh    # Управление LED-индикацией по расписанию
+│   └── ledcontrol/      # Установщик, LED-профили и управление индикаторами
 └── services/            # Списки доменов для различных сервисов
     ├── copilot.lst      # Домены для GitHub Copilot и Microsoft Edge
     ├── figma.lst        # Домены для Figma
@@ -87,66 +87,19 @@
 
 #### Автоматическая установка
 
-Для автоматической установки скрипта можете воспользоваться командами:
+Для установки или обновления скопируйте в терминал роутера одну команду:
 
 ```bash
-mkdir -p /etc/scripts && wget -q -O /etc/scripts/ledcontrol.sh https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/refs/heads/main/scripts/ledcontrol.sh && chmod +x /etc/scripts/ledcontrol.sh
-echo -e "0 7 * * * /etc/scripts/ledcontrol.sh on\n0 23 * * * /etc/scripts/ledcontrol.sh off\n*/30 * * * * /etc/scripts/ledcontrol.sh auto" >> /etc/crontabs/root && /etc/init.d/cron restart && [ -f /etc/rc.local ] && chmod +x /etc/rc.local && sed -i "/^exit 0/i (sleep 5 && /etc/scripts/ledcontrol.sh auto) &\n" /etc/rc.local || echo "rc.local не найден"
+wget -O - https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/refs/heads/main/scripts/ledcontrol/install.sh | sh
 ```
 
-#### Ручная установка
+Установщик получает модель из `/tmp/sysinfo/model`, выбирает подходящий профиль LED и сохраняет все файлы в `/etc/scripts/ledcontrol/`. Поддерживаются Xiaomi Router AX3000T и Xiaomi Router AX3200 / Redmi AX6S. Для неизвестной модели он завершится до изменения скрипта и расписания.
 
-1. Создайте директорию для скриптов в `/etc`:
-
-   ```bash
-   mkdir -p /etc/scripts
-   ```
-
-2. Создайте файл скрипта и сделайте его исполняемым:
-
-   ```bash
-   touch /etc/scripts/ledcontrol.sh && chmod +x /etc/scripts/ledcontrol.sh
-   ```
-
-3. Откройте файл в текстовом редакторе:
-
-   ```bash
-   vi /etc/scripts/ledcontrol.sh
-   ```
-
-4. Скопируйте содержимое из [ledcontrol.sh](https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/refs/heads/main/scripts/ledcontrol.sh)
-
-5. Сделайте файл `/etc/rc.local` исполняемым и откройте его:
-
-   ```bash
-   chmod +x /etc/rc.local && vi /etc/rc.local
-   ```
-
-> [!TIP]  
-> Можно открыть `/etc/rc.local` через веб-интерфейс LuCI в **System → Startup** (Система → Автозапуск), вкладка Local Startup.
-
-6. Добавьте следующую строку до `exit 0`:
-
-   ```bash
-   (sleep 5 && /etc/scripts/ledcontrol.sh auto) &
-   ```
-
-> [!NOTE]  
-> Эта строка нужна для запуска скрипта после перезагрузки роутера с 5-секундной задержкой, чтобы все системы успели загрузиться.
+Повторный запуск обновляет файлы и не дублирует собственные записи в cron и `rc.local`. Если ранее использовалась старая установка `/etc/scripts/ledcontrol.sh`, установщик удалит этот файл и заменит её записи планировщика и `rc.local`. После установки состояние LED сразу приводится в соответствие с текущим временем.
 
 #### Настройка расписания
 
-1. Откройте веб-интерфейс LuCI
-2. Перейдите в **System → Scheduled Tasks** (Система → Планировщик)
-3. Добавьте следующие строки:
-
-   ```cron
-   00 23 * * * /etc/scripts/ledcontrol.sh off
-   00 7 * * * /etc/scripts/ledcontrol.sh on
-   */30 * * * * /etc/scripts/ledcontrol.sh auto
-   ```
-
-4. Нажмите **Save** (Сохранить)
+Установщик добавляет включение в 07:00, выключение в 23:00 и проверку режима каждые 30 минут. Если нужно другое расписание, измените две записи в LuCI: **System → Scheduled Tasks**. Автозапуск выполняет `auto` через пять секунд после загрузки роутера.
 
 > [!TIP]  
 > Можно добавить задачу альтернативно, через командную строку
@@ -169,13 +122,13 @@ crontab -e
 
 ```bash
 # Включить LED
-/etc/scripts/ledcontrol.sh on
+/etc/scripts/ledcontrol/ledcontrol.sh on
 
 # Выключить LED
-/etc/scripts/ledcontrol.sh off
+/etc/scripts/ledcontrol/ledcontrol.sh off
 
 # Автоматическое управление по времени
-/etc/scripts/ledcontrol.sh auto
+/etc/scripts/ledcontrol/ledcontrol.sh auto
 ```
 
 #### Полезные команды
@@ -200,7 +153,7 @@ crontab -e
 
 #### Настройка времени
 
-В скрипте можно изменить время включения/выключения, отредактировав переменные:
+В `/etc/scripts/ledcontrol/ledcontrol.sh` можно изменить время включения/выключения, отредактировав переменные:
 
 ```bash
 ON_TIME=700   # 7:00
