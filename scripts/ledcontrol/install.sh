@@ -41,24 +41,33 @@ get_led_alias_node() {
         done
 }
 
-led_matches_node() {
-        led="$1"
-        node="$2"
+get_led_alias_name() {
+        alias_node=$(get_led_alias_node "$1")
+        [ -n "$alias_node" ] || return
 
-        [ -n "$node" ] || return 1
-        led_node=$(readlink -f "$led/device/of_node" 2>/dev/null)
-        [ -n "$led_node" ] || led_node=$(readlink -f "$led/of_node" 2>/dev/null)
+        # Older Device Tree descriptions expose a label.  Newer descriptions
+        # use the standard function/color properties, whose node name is
+        # conventionally <function>_<color> (for example power_blue).
+        for tree_root in /proc/device-tree /sys/firmware/devicetree/base; do
+                [ -r "$tree_root$alias_node/label" ] || continue
+                tr -d '\000' < "$tree_root$alias_node/label"
+                return
+        done
 
-        case "$led_node" in
-                *"$node") return 0 ;;
+        alias_node=${alias_node##*/}
+        alias_node=${alias_node#led_}
+        case "$alias_node" in
+                *_*)
+                        function=${alias_node%_*}
+                        color=${alias_node##*_}
+                        printf '%s:%s' "$color" "$function"
+                        ;;
         esac
-
-        return 1
 }
 
 generate_led_config() {
         uci_leds=$(detect_uci_leds)
-        running_led_node=$(get_led_alias_node led-running)
+        running_led_name=$(get_led_alias_name led-running)
         leds=""
         static_leds=""
         static_led_names=""
@@ -104,7 +113,7 @@ generate_led_config() {
                                 role_count=$((role_count + 1))
                 done
 
-                if led_matches_node "$led" "$running_led_node" || [ "$role_count" -eq 1 ]; then
+                if [ "$led_name" = "$running_led_name" ] || [ "$role_count" -eq 1 ]; then
                         static_leds="$static_leds $led"
                         static_led_names="$static_led_names $led_name"
                 fi
