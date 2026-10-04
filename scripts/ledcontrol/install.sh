@@ -9,6 +9,7 @@ LEGACY_SCRIPT="/etc/scripts/ledcontrol.sh"
 LEGACY_PROFILE_DIR="$SCRIPT_DIR/profiles"
 CRONTAB_FILE="/etc/crontabs/root"
 RC_LOCAL="/etc/rc.local"
+MODE_STATE_FILE="/tmp/ledcontrol.mode"
 TEMP_DIR="/tmp/ledcontrol-install.$$"
 CACHE_BUST="$(date +%s 2>/dev/null || printf '%s' "$$")"
 
@@ -75,17 +76,24 @@ generate_led_config() {
         DETECTED_LED_NAMES="$led_names"
 }
 
+remove_cron_entries() {
+        [ -f "$CRONTAB_FILE" ] || return
+        grep -Fv "$CONTROL_SCRIPT" "$CRONTAB_FILE" | \
+                grep -Fv "$LEGACY_SCRIPT" > "$TEMP_DIR/crontab"
+        mv "$TEMP_DIR/crontab" "$CRONTAB_FILE"
+        [ -x /etc/init.d/cron ] && /etc/init.d/cron restart
+}
+
 install_cron() {
         mkdir -p /etc/crontabs
         touch "$CRONTAB_FILE"
-        grep -Fv "$CONTROL_SCRIPT" "$CRONTAB_FILE" | \
-                grep -Fv "$LEGACY_SCRIPT" > "$TEMP_DIR/crontab"
+        remove_cron_entries
         {
-                cat "$TEMP_DIR/crontab"
+                cat "$CRONTAB_FILE"
                 printf '%s\n' "*/5 * * * * $CONTROL_SCRIPT auto"
         } > "$TEMP_DIR/crontab.new"
         mv "$TEMP_DIR/crontab.new" "$CRONTAB_FILE"
-        /etc/init.d/cron restart
+        [ -x /etc/init.d/cron ] && /etc/init.d/cron restart
 }
 
 install_luci() {
@@ -114,16 +122,24 @@ install_luci() {
         msg "LuCI interface installed; sign out and sign in again, then refresh the page"
 }
 
-install_startup() {
+remove_startup_entries() {
         startup_line="(sleep 5 && $CONTROL_SCRIPT auto) &"
         legacy_startup_line="(sleep 5 && $LEGACY_SCRIPT auto) &"
+
+        [ -f "$RC_LOCAL" ] || return
+        grep -Fvx "$startup_line" "$RC_LOCAL" | \
+                grep -Fvx "$legacy_startup_line" > "$TEMP_DIR/rc.local"
+        mv "$TEMP_DIR/rc.local" "$RC_LOCAL"
+}
+
+install_startup() {
+        startup_line="(sleep 5 && $CONTROL_SCRIPT auto) &"
 
         if [ ! -f "$RC_LOCAL" ]; then
                 printf '%s\n' '#!/bin/sh' '' 'exit 0' > "$RC_LOCAL"
         fi
 
-        grep -Fvx "$startup_line" "$RC_LOCAL" | \
-                grep -Fvx "$legacy_startup_line" > "$TEMP_DIR/rc.local"
+        remove_startup_entries
         awk -v line="$startup_line" '
                 $0 == "exit 0" && !inserted { print line; inserted = 1 }
                 { print }
@@ -138,9 +154,47 @@ install_startup() {
         chmod +x "$RC_LOCAL"
 }
 
+uninstall() {
+        remove_cron_entries
+        remove_startup_entries
+
+        if [ -x /etc/init.d/led ]; then
+                /etc/init.d/led restart
+        fi
+
+        rm -f /www/luci-static/resources/view/ledcontrol/overview.js
+        rm -f /usr/share/luci/menu.d/luci-app-ledcontrol.json
+        rm -f /usr/share/rpcd/acl.d/luci-app-ledcontrol.json
+        rm -f /usr/lib/lua/luci/i18n/ledcontrol.ru.lmo
+        rm -f /tmp/luci-indexcache.*.json
+        rm -f "$MODE_STATE_FILE"
+        rm -f "$SETTINGS_FILE"
+        rm -f "$LEGACY_SCRIPT"
+        rm -rf "$SCRIPT_DIR"
+
+        if [ -x /etc/init.d/rpcd ]; then
+                /etc/init.d/rpcd restart
+        fi
+
+        msg "ledcontrol has been removed"
+}
+
 main() {
         trap cleanup 0 INT TERM
         mkdir -p "$TEMP_DIR"
+
+        case "$1" in
+                uninstall)
+                        uninstall
+                        exit 0
+                        ;;
+                "")
+                        ;;
+                *)
+                        msg "Usage: $0 [uninstall]"
+                        exit 1
+                        ;;
+        esac
 
         download "$REPOSITORY/ledcontrol.sh" "$TEMP_DIR/ledcontrol.sh" || {
                 msg "Unable to download ledcontrol.sh"
