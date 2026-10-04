@@ -90,7 +90,7 @@
 Для установки или обновления скопируйте в терминал роутера одну команду:
 
 ```bash
-wget -O - https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/refs/heads/main/scripts/ledcontrol/install.sh | sh
+wget -O - "https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/main/scripts/ledcontrol/install.sh?cachebust=$(date +%s)" | sh
 ```
 
 Установщик получает модель из `/tmp/sysinfo/model`, выбирает подходящий профиль LED и сохраняет все файлы в `/etc/scripts/ledcontrol/`. Поддерживаются Xiaomi Router AX3000T и Xiaomi Router AX3200 / Redmi AX6S. Для неизвестной модели он завершится до изменения скрипта и расписания.

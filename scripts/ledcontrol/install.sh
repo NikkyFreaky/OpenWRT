@@ -1,6 +1,6 @@
 #!/bin/sh
 
-REPOSITORY="https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/refs/heads/main/scripts/ledcontrol"
+REPOSITORY="https://raw.githubusercontent.com/NikkyFreaky/OpenWRT/main/scripts/ledcontrol"
 SCRIPT_DIR="/etc/scripts/ledcontrol"
 CONTROL_SCRIPT="$SCRIPT_DIR/ledcontrol.sh"
 CONFIG_FILE="$SCRIPT_DIR/ledcontrol.conf"
@@ -9,6 +9,7 @@ LEGACY_SCRIPT="/etc/scripts/ledcontrol.sh"
 CRONTAB_FILE="/etc/crontabs/root"
 RC_LOCAL="/etc/rc.local"
 TEMP_DIR="/tmp/ledcontrol-install.$$"
+CACHE_BUST="$(date +%s 2>/dev/null || printf '%s' "$$")"
 
 msg() {
         printf '%s\n' "$*"
@@ -19,7 +20,7 @@ cleanup() {
 }
 
 download() {
-        wget -q -O "$2" "$1" && [ -s "$2" ]
+        wget -q -O "$2" "$1?cachebust=$CACHE_BUST" && [ -s "$2" ]
 }
 
 get_model() {
