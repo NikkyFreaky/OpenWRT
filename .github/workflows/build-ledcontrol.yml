@@ -2,6 +2,8 @@ name: Build LED Control packages
 
 on:
   push:
+    branches:
+      - '**'
     tags:
       - 'v*'
     paths:
