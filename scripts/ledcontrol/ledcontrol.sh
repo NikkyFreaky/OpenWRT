@@ -49,15 +49,37 @@ set_trigger() {
         fi
 }
 
-led_on() {
-        for led in $(configured_leds); do
-                current_trigger=$(cat "$led/trigger")
+set_static_on() {
+        led="$1"
 
-                if echo "$current_trigger" | grep -q "\[default-on\]"; then
-                        log "${led##*/} already on"
-                elif set_trigger "$led" default-on; then
-                        log "Set ${led##*/}: default-on"
+        if [ ! -r "$led/trigger" ] || [ ! -w "$led/brightness" ]; then
+                log "Skip unavailable LED: ${led##*/}"
+                return 0
+        fi
+
+        if set_trigger "$led" none; then
+                max_brightness=$(cat "$led/max_brightness" 2>/dev/null || printf '%s' 255)
+                if echo "$max_brightness" > "$led/brightness" 2>/dev/null; then
+                        log "Restored ${led##*/}: on"
+                else
+                        log "Unable to restore ${led##*/} brightness"
                 fi
+        fi
+}
+
+led_on() {
+        if [ -x /etc/init.d/led ]; then
+                if /etc/init.d/led restart; then
+                        log "Restored LED settings from /etc/config/system"
+                else
+                        log "Unable to restore LED settings from /etc/config/system"
+                fi
+        else
+                log "Unable to restore UCI LED settings: /etc/init.d/led is unavailable"
+        fi
+
+        for led in $STATIC_ON_LEDS; do
+                set_static_on "$led"
         done
 }
 
