@@ -67,9 +67,11 @@ install_luci() {
         mkdir -p /www/luci-static/resources/view/ledcontrol
         mkdir -p /usr/share/luci/menu.d
         mkdir -p /usr/share/rpcd/acl.d
+        mkdir -p /usr/lib/lua/luci/i18n
         mv "$TEMP_DIR/overview.js" /www/luci-static/resources/view/ledcontrol/overview.js
         mv "$TEMP_DIR/luci-app-ledcontrol.json" /usr/share/luci/menu.d/luci-app-ledcontrol.json
         mv "$TEMP_DIR/luci-app-ledcontrol.acl.json" /usr/share/rpcd/acl.d/luci-app-ledcontrol.json
+        mv "$TEMP_DIR/ledcontrol.ru.lmo" /usr/lib/lua/luci/i18n/ledcontrol.ru.lmo
 
         # LuCI caches the page tree under /tmp.  Drop every versioned cache
         # file so a newly installed menu entry is visible immediately.
@@ -145,6 +147,10 @@ main() {
         }
         download "$REPOSITORY/luci/root/usr/share/rpcd/acl.d/luci-app-ledcontrol.json" "$TEMP_DIR/luci-app-ledcontrol.acl.json" || {
                 msg "Unable to download the LuCI access policy"
+                exit 1
+        }
+        download "$REPOSITORY/luci/root/usr/lib/lua/luci/i18n/ledcontrol.ru.lmo" "$TEMP_DIR/ledcontrol.ru.lmo" || {
+                msg "Unable to download the Russian LuCI translation"
                 exit 1
         }
 

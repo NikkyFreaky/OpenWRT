@@ -1,0 +1,59 @@
+msgid ""
+msgstr ""
+"Language: ru\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "LED Control"
+msgstr "Управление LED"
+
+msgid "Set the daily interval when the router LEDs are on. The selected mode is checked every five minutes."
+msgstr "Настройте ежедневный интервал работы индикаторов роутера. Выбранный режим проверяется каждые пять минут."
+
+msgid "Schedule"
+msgstr "Расписание"
+
+msgid "Automatic mode"
+msgstr "Автоматический режим"
+
+msgid "Apply the schedule every five minutes. Manual LED controls disable this mode."
+msgstr "Применять расписание каждые пять минут. Ручное управление индикаторами отключает этот режим."
+
+msgid "Turn on at"
+msgstr "Включать в"
+
+msgid "Turn off at"
+msgstr "Выключать в"
+
+msgid "Turn on"
+msgstr "Включить"
+
+msgid "Turn off"
+msgstr "Выключить"
+
+msgid "Reset defaults"
+msgstr "Сбросить настройки"
+
+msgid "The command failed."
+msgstr "Не удалось выполнить команду."
+
+msgid "LED mode changed to %s. Automatic mode disabled."
+msgstr "Режим индикаторов изменён: %s. Автоматический режим отключён."
+
+msgid "Unable to change LED mode: %s"
+msgstr "Не удалось изменить режим индикаторов: %s"
+
+msgid "Automatic mode enabled."
+msgstr "Автоматический режим включён."
+
+msgid "Automatic mode disabled."
+msgstr "Автоматический режим отключён."
+
+msgid "Unable to change automatic mode: %s"
+msgstr "Не удалось изменить автоматический режим: %s"
+
+msgid "Default settings restored. Automatic mode enabled."
+msgstr "Настройки по умолчанию восстановлены. Автоматический режим включён."
+
+msgid "Unable to restore default settings: %s"
+msgstr "Не удалось восстановить настройки по умолчанию: %s"
